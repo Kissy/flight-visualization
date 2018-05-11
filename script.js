@@ -67,7 +67,7 @@ function loaded(error, countries, airports, flights) {
         airportCoordinates[airportFeature.id] = airportFeature.geometry.coordinates;
     }
 
-    svg.append("g")
+    /*svg.append("g")
         .attr("class", "airports")
         .selectAll("path")
         .data(airportsFeatures)
@@ -76,12 +76,12 @@ function loaded(error, countries, airports, flights) {
         .attr("id", function(d) {
             return d.id;
         })
-        .attr("d", path);
+        .attr("d", path);*/
 
-    var dayDuration = 1000;
+    var dayDuration = 2000;
     var animationDuration = 31 * dayDuration;
     var dateInterpolation = d3.interpolateNumber(0, 31);
-    var startDate = moment("2018-01-01");
+    var startDate = moment("2018-04-01");
 
     d3.select(".date")
         .transition()
@@ -101,19 +101,23 @@ function loaded(error, countries, airports, flights) {
     for (var i = 0; i < flights.length; i++) {
         var flight = flights[i];
 
-        var flightStart = moment(flight.start);
-        var flightEnd = moment(flight.end);
-        var delay = flightStart.diff(startDate, 'days') * dayDuration;
-        var duration = flightEnd.diff(flightStart, 'days') * dayDuration;
-        console.log(delay + " " + duration);
-
+        var flightStart = moment(flight['BEGIN_DATE']);
+        var flightEnd = moment(flight['END_DATE']);
+        var delay = flightStart.diff(startDate, 'seconds') * dayDuration / (24 * 60 * 60);
+        var duration = flightEnd.diff(flightStart, 'seconds') * dayDuration / (24 * 60 * 60);
         if (delay < 0) {
             // flight start is before animation start
             continue;
         }
 
+        var origin = airportCoordinates[flight['ORIGIN']];
+        var destination = airportCoordinates[flight['DESTINATION']];
+        if (!origin || !destination) {
+            continue;
+        }
+
         var route = svg.append("path")
-            .datum({type: "LineString", coordinates: [airportCoordinates[flight.from], airportCoordinates[flight.to]]})
+            .datum({type: "LineString", coordinates: [origin, destination]})
             .attr("class", "route")
             .attr("d", path);
         var plane = svg.append("circle")
@@ -121,10 +125,18 @@ function loaded(error, countries, airports, flights) {
             .attr("r", 2)
             .style("filter", "url(#glow)");
 
-        plane.transition()
+        plane
+            .transition()
             .delay(delay)
+            .transition()
+            .duration(500)
+            .style("opacity", 1)
+            .transition()
             .duration(duration)
-            .attrTween("transform", delta(route.node()));
+            .attrTween("transform", delta(route.node()))
+            .transition()
+            .duration(500)
+            .remove();
     }
 
     /*for (var i = 0; i < 1000; i++) {
