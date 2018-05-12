@@ -11,8 +11,15 @@ html, body {
 
 h2.date {
     position: absolute;
-    bottom: 0;
+    top: 0;
+    left: 48%;
+    margin: 5px 0;
     color: #6cb0e0;
+}
+
+.map,
+.flights {
+    position: absolute;
 }
 
 .countries {
