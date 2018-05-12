@@ -1,9 +1,9 @@
 var currentWidth = document.body.clientWidth;
 var currentHeight = document.body.clientHeight;
 var SECOND_TO_DAY_RATIO = 60 * 60 * 24;
-var START_DATE = moment("2018-04-01");
-//var ANIMATION_SPEED = 60 * 60 * 24;
-var ANIMATION_SPEED = 60 * 60 * 6;
+var START_DATE = moment("2018-04-01").add(9, 'hours');
+//var ANIMATION_SPEED = 60 * 60 * 24 / 2;
+var ANIMATION_SPEED = 60 * 10;
 
 var svg = d3.select("body")
     .append("svg")
@@ -35,7 +35,7 @@ var animationTime = 0;
 ticker.add(function () {
     realTime += ticker.elapsedMS;
     animationTime += (ticker.elapsedMS / 1000) * ANIMATION_SPEED;
-    d3.select(".date").text(moment(START_DATE).add(animationTime, 'seconds').format());
+    d3.select(".date").text(moment(START_DATE).add(animationTime, 'seconds').format('YYYY-MM-DD HH:mm'));
 
     // TODO fade out animation
     for (var i = points.length - 1; i >= 0; i--) {
@@ -93,7 +93,7 @@ function loaded(error, countries, airports, flights) {
         })
         .attr("d", path);*/
 
-    for (var i = 0; i < /*flights.length*/3000; i++) {
+    for (var i = 0; i < flights.length; i++) {
         var flight = flights[i];
 
         var originAirport = airportCoordinates[flight['ORIGIN']];
@@ -104,8 +104,8 @@ function loaded(error, countries, airports, flights) {
 
         var origin = originAirport.coordinates;
         var destination = destinationAirport.coordinates;
-        var flightStart = moment(flight['BEGIN_DATE'])/*.add(originAirport.timezone, 'hours')*/;
-        var flightEnd = moment(flight['END_DATE'])/*.add(destinationAirport.timezone, 'hours')*/;
+        var flightStart = moment(flight['BEGIN_DATE']).subtract(originAirport.timezone, 'hours');
+        var flightEnd = moment(flight['END_DATE']).subtract(destinationAirport.timezone, 'hours');
         var delay = flightStart.diff(START_DATE, 'seconds');
         var duration = flightEnd.diff(flightStart, 'seconds');
         if (delay < 0) {
