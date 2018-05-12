@@ -1,9 +1,8 @@
 var currentWidth = document.body.clientWidth;
 var currentHeight = document.body.clientHeight;
-var SECOND_TO_DAY_RATIO = 60 * 60 * 24;
 var START_DATE = moment("2018-04-01").add(9, 'hours');
-//var ANIMATION_SPEED = 60 * 60 * 24 / 2;
-var ANIMATION_SPEED = 60 * 10;
+var ANIMATION_SPEED = 60 * 60 * 24 / 2;
+var FADE_IN_SPEED = 0.2;
 
 var svg = d3.select("body")
     .append("svg")
@@ -37,14 +36,20 @@ ticker.add(function () {
     animationTime += (ticker.elapsedMS / 1000) * ANIMATION_SPEED;
     d3.select(".date").text(moment(START_DATE).add(animationTime, 'seconds').format('YYYY-MM-DD HH:mm'));
 
-    // TODO fade out animation
     for (var i = points.length - 1; i >= 0; i--) {
         var point = points[i];
         if (point.visible) {
             if (animationTime > point.data.delay + point.data.duration) {
-                point.visible = false;
-                points.splice(i, 1);
+                if (point.alpha > 0) {
+                    point.alpha -= FADE_IN_SPEED;
+                } else {
+                    point.visible = false;
+                    points.splice(i, 1);
+                }
             } else {
+                if (point.alpha < 1) {
+                    point.alpha += FADE_IN_SPEED;
+                }
                 var currentPoint = (animationTime - point.data.delay) / point.data.duration;
                 var newPosition = point.data.route(currentPoint);
                 point.x = newPosition[0];
@@ -125,6 +130,7 @@ function loaded(error, countries, airports, flights) {
         circle.drawCircle(0, 0, 3);
         circle.endFill();
         circle.visible = false;
+        circle.alpha = 0;
         circle.x = firstPoint[0];
         circle.y = firstPoint[1];
         circle.data = {};
