@@ -1,7 +1,10 @@
 var currentWidth = document.body.clientWidth;
 var currentHeight = document.body.clientHeight;
-var DAY_DURATION = 2000;
 var SECOND_TO_DAY_RATIO = 60 * 60 * 24;
+var START_DATE = moment("2018-04-01");
+//var ANIMATION_SPEED = 60 * 60 * 24;
+var ANIMATION_SPEED = 60 * 60 * 6;
+var FADE_TIME = 10;
 
 var svg = d3.select("body")
     .append("svg")
@@ -30,22 +33,25 @@ var ticker = new PIXI.ticker.Ticker();
 
 var realTime = 0;
 var animationTime = 0;
-ticker.add(function (deltaTime) {
-    realTime += (deltaTime / 100);
-    animationTime = realTime;
-    d3.select(".date").text(animationTime);
+ticker.add(function () {
+    realTime += ticker.elapsedMS;
+    animationTime += (ticker.elapsedMS / 1000) * ANIMATION_SPEED;
+    d3.select(".date").text(moment(START_DATE).add(animationTime, 'seconds').format());
 
+    // TODO fade out animation
     for (var i = points.length - 1; i >= 0; i--) {
         var point = points[i];
         if (point.visible) {
-            if (point.data.delay + point.data.duration >= animationTime) {
-                // point.visible = false;
-                // points.splice(i, 1);
+            if (animationTime > point.data.delay + point.data.duration) {
+                point.visible = false;
+                points.splice(i, 1);
+            } else {
+                var currentPoint = (animationTime - point.data.delay) / point.data.duration;
+                var newPosition = point.data.route(currentPoint);
+                point.x = newPosition[0];
+                point.y = newPosition[1];
             }
-            // var newPosition = point.data.route(time / 100.0);
-            // point.x = newPosition[0];
-            // point.y = newPosition[1];
-        } else if (point.data.delay >= animationTime) {
+        } else if (animationTime >= point.data.delay) {
             point.visible = true;
         }
     }
@@ -54,7 +60,7 @@ ticker.add(function (deltaTime) {
 function delta(path) {
     var l = path.getTotalLength();
     return function (t) {
-        var p = path.getPointAtLength(t * l);
+        var p = path.getPointAtLength(d3.easeCircle(t) * l);
         return [p.x, p.y];
     }
 }
@@ -86,32 +92,13 @@ function loaded(error, countries, airports, flights) {
         })
         .attr("d", path);*/
 
-    var animationDuration = 31 * DAY_DURATION;
-    var dateInterpolation = d3.interpolateNumber(0, 31);
-    var startDate = moment("2018-04-01");
-
-    d3.select(".date")
-        .transition()
-        .duration(animationDuration)
-        .on("start", function () {
-            d3.active(this)
-                .tween("text", function () {
-                    var that = d3.select(this);
-                    return function (t) {
-                        var dayAdded = Math.round(dateInterpolation(t));
-                        //that.text(moment(startDate).add(dayAdded, 'days').format('DD/MM/YYYY'));
-                    };
-                })
-                .ease(d3.easeLinear);
-        });
-
-    for (var i = 0; i < /*flights.length*/ 20; i++) {
+    for (var i = 0; i < flights.length; i++) {
         var flight = flights[i];
 
         var flightStart = moment(flight['BEGIN_DATE']);
         var flightEnd = moment(flight['END_DATE']);
-        var delay = flightStart.diff(startDate, 'seconds') / SECOND_TO_DAY_RATIO;
-        var duration = flightEnd.diff(flightStart, 'seconds') / SECOND_TO_DAY_RATIO;
+        var delay = flightStart.diff(START_DATE, 'seconds');
+        var duration = flightEnd.diff(flightStart, 'seconds');
         if (delay < 0) {
             // flight start is before animation start
             continue;
@@ -131,7 +118,7 @@ function loaded(error, countries, airports, flights) {
         var firstPoint = routeFunction(0);
 
         var circle = new PIXI.Graphics();
-        circle.beginFill(0x9966FF);
+        circle.beginFill(0x6cb0e0);
         circle.drawCircle(0, 0, 3);
         circle.endFill();
         circle.visible = false;
@@ -142,28 +129,7 @@ function loaded(error, countries, airports, flights) {
         circle.data.duration = duration;
         circle.data.route = routeFunction;
         app.stage.addChild(circle);
-        console.log(flight);
-        console.log(circle.data);
         points.push(circle);
-
-        /*
-        var plane = svg.append("circle")
-            .attr("class", "plane")
-            .attr("r", 2)
-            .style("filter", "url(#glow)");
-
-        plane
-            .transition()
-            .delay(delay)
-            .transition()
-            .duration(500)
-            .style("opacity", 1)
-            .transition()
-            .duration(duration)
-            .attrTween("transform", delta(route.node()))
-            .transition()
-            .duration(500)
-            .remove();*/
     }
 
     ticker.start();
