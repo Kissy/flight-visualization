@@ -4,7 +4,6 @@ var SECOND_TO_DAY_RATIO = 60 * 60 * 24;
 var START_DATE = moment("2018-04-01");
 //var ANIMATION_SPEED = 60 * 60 * 24;
 var ANIMATION_SPEED = 60 * 60 * 6;
-var FADE_TIME = 10;
 
 var svg = d3.select("body")
     .append("svg")
@@ -60,7 +59,7 @@ ticker.add(function () {
 function delta(path) {
     var l = path.getTotalLength();
     return function (t) {
-        var p = path.getPointAtLength(d3.easeCircle(t) * l);
+        var p = path.getPointAtLength(t * l);
         return [p.x, p.y];
     }
 }
@@ -74,11 +73,13 @@ function loaded(error, countries, airports, flights) {
         .append("path")
         .attr("d", path);
 
-    var airportsFeatures = topojson.feature(airports, airports.objects.airports).features;
     var airportCoordinates = {};
-    for (var i = 0; i < airportsFeatures.length; i++) {
-        var airportFeature = airportsFeatures[i];
-        airportCoordinates[airportFeature.id] = airportFeature.geometry.coordinates;
+    for (var i = 0; i < airports.length; i++) {
+        var airport = airports[i];
+        airportCoordinates[airport['IATA']] = {
+            coordinates: [airport['LONGITUDE'], airport['LATITUDE']],
+            timezone: airport['TIMEZONE']
+        };
     }
 
     /*svg.append("g")
@@ -92,21 +93,23 @@ function loaded(error, countries, airports, flights) {
         })
         .attr("d", path);*/
 
-    for (var i = 0; i < flights.length; i++) {
+    for (var i = 0; i < /*flights.length*/3000; i++) {
         var flight = flights[i];
 
-        var flightStart = moment(flight['BEGIN_DATE']);
-        var flightEnd = moment(flight['END_DATE']);
+        var originAirport = airportCoordinates[flight['ORIGIN']];
+        var destinationAirport = airportCoordinates[flight['DESTINATION']];
+        if (!originAirport || !destinationAirport) {
+            continue;
+        }
+
+        var origin = originAirport.coordinates;
+        var destination = destinationAirport.coordinates;
+        var flightStart = moment(flight['BEGIN_DATE'])/*.add(originAirport.timezone, 'hours')*/;
+        var flightEnd = moment(flight['END_DATE'])/*.add(destinationAirport.timezone, 'hours')*/;
         var delay = flightStart.diff(START_DATE, 'seconds');
         var duration = flightEnd.diff(flightStart, 'seconds');
         if (delay < 0) {
             // flight start is before animation start
-            continue;
-        }
-
-        var origin = airportCoordinates[flight['ORIGIN']];
-        var destination = airportCoordinates[flight['DESTINATION']];
-        if (!origin || !destination) {
             continue;
         }
 
@@ -137,6 +140,7 @@ function loaded(error, countries, airports, flights) {
 
 d3.queue()
     .defer(d3.json, "countries.topo.json")
-    .defer(d3.json, "airports.topo.json")
+    //.defer(d3.json, "airports.topo.json")
+    .defer(d3.csv, "airports.csv")
     .defer(d3.csv, "flights.csv")
     .await(loaded);
