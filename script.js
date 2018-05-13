@@ -64,7 +64,7 @@ ticker.add(function () {
 function delta(path) {
     var l = path.getTotalLength();
     return function (t) {
-        var p = path.getPointAtLength(t * l);
+        var p = path.getPointAtLength(d3.easeSin(t) * l);
         return [p.x, p.y];
     }
 }
