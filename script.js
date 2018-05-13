@@ -1,6 +1,7 @@
 var currentWidth = document.body.clientWidth;
 var currentHeight = document.body.clientHeight;
 var START_DATE = moment("2018-04-01").add(9, 'hours');
+var END_DATE = moment("2018-05-01");
 var ANIMATION_SPEED = 60 * 60 * 24 / 2;
 var FADE_IN_SPEED = 0.2;
 
@@ -29,10 +30,12 @@ document.body.appendChild(app.view);
 var points = [];
 var ticker = new PIXI.ticker.Ticker();
 
-var realTime = 0;
 var animationTime = 0;
 ticker.add(function () {
-    realTime += ticker.elapsedMS;
+    if (moment(START_DATE).add(animationTime, 'seconds').isAfter(END_DATE)) {
+        animationTime = 0;
+    }
+
     animationTime += (ticker.elapsedMS / 1000) * ANIMATION_SPEED;
     d3.select(".date").text(moment(START_DATE).add(animationTime, 'seconds').format('YYYY-MM-DD HH:mm'));
 
@@ -44,7 +47,6 @@ ticker.add(function () {
                     point.alpha -= FADE_IN_SPEED;
                 } else {
                     point.visible = false;
-                    points.splice(i, 1);
                 }
             } else {
                 if (point.alpha < 1) {
@@ -55,7 +57,7 @@ ticker.add(function () {
                 point.x = newPosition[0];
                 point.y = newPosition[1];
             }
-        } else if (animationTime >= point.data.delay) {
+        } else if (animationTime >= point.data.delay && animationTime < point.data.delay + point.data.duration) {
             point.visible = true;
         }
     }
@@ -86,17 +88,6 @@ function loaded(error, countries, airports, flights) {
             timezone: airport['TIMEZONE']
         };
     }
-
-    /*svg.append("g")
-        .attr("class", "airports")
-        .selectAll("path")
-        .data(airportsFeatures)
-        .enter()
-        .append("path")
-        .attr("id", function(d) {
-            return d.id;
-        })
-        .attr("d", path);*/
 
     for (var i = 0; i < flights.length; i++) {
         var flight = flights[i];
@@ -146,7 +137,6 @@ function loaded(error, countries, airports, flights) {
 
 d3.queue()
     .defer(d3.json, "countries.topo.json")
-    //.defer(d3.json, "airports.topo.json")
     .defer(d3.csv, "airports.csv")
     .defer(d3.csv, "flights.csv")
     .await(loaded);
