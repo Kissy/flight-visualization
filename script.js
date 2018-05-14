@@ -26,7 +26,8 @@ var path = d3.geoPath()
 var app = new PIXI.Application({
     width: currentWidth,
     height: currentHeight,
-    transparent: true
+    transparent: true,
+    antialiasing: true
 });
 app.view.className = 'flights';
 document.body.appendChild(app.view);
@@ -45,13 +46,18 @@ ticker.add(function () {
 
     for (var i = points.length - 1; i >= 0; i--) {
         var point = points[i];
+        
         if (animationTime > point.data.end + FADE_IN_TIME) {
             point.visible = false;
         } else if (animationTime > point.data.end) {
             point.visible = true;
             point.alpha = d3.easeSin((animationTime - point.data.end + FADE_IN_TIME) / FADE_IN_TIME);
         } else if (animationTime >= point.data.delay) {
-            var newPosition = point.data.route((animationTime - point.data.delay) / point.data.duration);
+			if (!point.data.routeFunction) {	
+				point.data.routeFunction = delta(point.data.route.node());
+			}
+        
+            var newPosition = point.data.routeFunction((animationTime - point.data.delay) / point.data.duration);
             point.x = newPosition[0];
             point.y = newPosition[1];
             point.visible = true;
@@ -111,8 +117,6 @@ function loaded(error, countries, airports, flights) {
             .datum({type: "LineString", coordinates: [origin, destination]})
             .attr("class", "route")
             .attr("d", path);
-        var routeFunction = delta(route.node());
-        var firstPoint = routeFunction(0);
 
         var circle = new PIXI.Graphics();
         circle.beginFill(0x6cb0e0);
@@ -120,13 +124,11 @@ function loaded(error, countries, airports, flights) {
         circle.endFill();
         circle.visible = false;
         circle.alpha = 0;
-        circle.x = firstPoint[0];
-        circle.y = firstPoint[1];
         circle.data = {};
         circle.data.delay = delay;
         circle.data.duration = duration;
         circle.data.end = delay + duration;
-        circle.data.route = routeFunction;
+        circle.data.route = route;
         app.stage.addChild(circle);
         points.push(circle);
     }
