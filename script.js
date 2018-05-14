@@ -1,9 +1,13 @@
 var currentWidth = document.body.clientWidth;
 var currentHeight = document.body.clientHeight;
-var START_DATE = moment("2018-04-01").add(9, 'hours');
+var START_DATE = moment("2018-04-01");
 var END_DATE = moment("2018-05-01");
+// var START_DATE = moment();
+// var END_DATE = moment().add(1, 'days');
 var ANIMATION_SPEED = 60 * 60 * 24 / 2;
-var FADE_IN_SPEED = 0.2;
+// var ANIMATION_SPEED = 10000;
+// var FADE_IN_TIME = 10 * ANIMATION_SPEED;
+var FADE_IN_TIME = 1000;
 
 var svg = d3.select("body")
     .append("svg")
@@ -37,28 +41,26 @@ ticker.add(function () {
     }
 
     animationTime += (ticker.elapsedMS / 1000) * ANIMATION_SPEED;
-    d3.select(".date").text(moment(START_DATE).add(animationTime, 'seconds').format('YYYY-MM-DD HH:mm'));
+    d3.select(".date").text(moment(START_DATE).add(animationTime, 'seconds').format('YYYY-MM-DD HH:mm:ss'));
 
     for (var i = points.length - 1; i >= 0; i--) {
         var point = points[i];
-        if (point.visible) {
-            if (animationTime > point.data.delay + point.data.duration) {
-                if (point.alpha > 0) {
-                    point.alpha -= FADE_IN_SPEED;
-                } else {
-                    point.visible = false;
-                }
-            } else {
-                if (point.alpha < 1) {
-                    point.alpha += FADE_IN_SPEED;
-                }
-                var currentPoint = (animationTime - point.data.delay) / point.data.duration;
-                var newPosition = point.data.route(currentPoint);
-                point.x = newPosition[0];
-                point.y = newPosition[1];
-            }
-        } else if (animationTime >= point.data.delay && animationTime < point.data.delay + point.data.duration) {
+        if (animationTime > point.data.end + FADE_IN_TIME) {
+            point.visible = false;
+        } else if (animationTime > point.data.end) {
             point.visible = true;
+            point.alpha = d3.easeSin((animationTime - point.data.end + FADE_IN_TIME) / FADE_IN_TIME);
+        } else if (animationTime >= point.data.delay) {
+            var newPosition = point.data.route((animationTime - point.data.delay) / point.data.duration);
+            point.x = newPosition[0];
+            point.y = newPosition[1];
+            point.visible = true;
+            point.alpha = 1;
+        } else if (animationTime > point.data.delay - FADE_IN_TIME) {
+            point.visible = true;
+            point.alpha = d3.easeSin((animationTime - (point.data.delay - FADE_IN_TIME)) / FADE_IN_TIME);
+        } else {
+            point.visible = false;
         }
     }
 });
@@ -104,10 +106,6 @@ function loaded(error, countries, airports, flights) {
         var flightEnd = moment(flight['END_DATE']).subtract(destinationAirport.timezone, 'hours');
         var delay = flightStart.diff(START_DATE, 'seconds');
         var duration = flightEnd.diff(flightStart, 'seconds');
-        if (delay < 0) {
-            // flight start is before animation start
-            continue;
-        }
 
         var route = svg.append("path")
             .datum({type: "LineString", coordinates: [origin, destination]})
@@ -118,7 +116,7 @@ function loaded(error, countries, airports, flights) {
 
         var circle = new PIXI.Graphics();
         circle.beginFill(0x6cb0e0);
-        circle.drawCircle(0, 0, 3);
+        circle.drawCircle(0, 0, 2);
         circle.endFill();
         circle.visible = false;
         circle.alpha = 0;
@@ -127,6 +125,7 @@ function loaded(error, countries, airports, flights) {
         circle.data = {};
         circle.data.delay = delay;
         circle.data.duration = duration;
+        circle.data.end = delay + duration;
         circle.data.route = routeFunction;
         app.stage.addChild(circle);
         points.push(circle);
